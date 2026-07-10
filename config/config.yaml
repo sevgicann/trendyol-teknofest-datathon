@@ -1,0 +1,104 @@
+# ============================================================================
+# Trendyol E-Ticaret 2026 — merkezi konfigürasyon
+# Gerçek verinin kolon adları farklıysa SADECE bu dosyayı düzenleyin; kod aynı kalır.
+# ============================================================================
+
+competition:
+  slug: "trendyol-e-ticaret-yarismasi-2026-kaggle"
+
+paths:
+  raw_dir: "data/raw"
+  interim_dir: "data/interim"
+  processed_dir: "data/processed"
+  models_dir: "models"
+  submissions_dir: "submissions"
+  figures_dir: "reports/figures"
+  # --- GERÇEK VERİ (ilişkisel şema): çift dosyaları terim/ürün ID'si taşır,
+  # metinler terms_file ve items_file'dan join edilir (loader otomatik yapar).
+  train_file: "folder/training_pairs.csv"   # pozitif (alakalı) çiftler: id, term_id, item_id, label
+  test_file: "folder/submission_pairs.csv"  # tahmin edilecek çiftler: id, term_id, item_id
+  sample_submission_file: "folder/sample_submission.csv"
+  terms_file: "folder/terms.csv"            # term_id -> query (arama terimi metni)
+  items_file: "folder/items.csv"            # item_id -> title, category, brand, gender, age_group, attributes
+
+# --- Kolon eşlemesi (schema-adaptive) -------------------------------------
+# Solda kodun kullandığı KANONİK ad, sağda veri dosyasındaki GERÇEK ad.
+# Loader, gerçek dosyada bu adları bulamazsa "aliases" listesinden otomatik arar.
+columns:
+  id: "id"                    # test satır kimliği (submission için)
+  term: "search_term"         # arama terimi / kullanıcı sorgusu
+  product_title: "product_title"
+  category: "category"        # kategori hiyerarşisi (level1>level2>leaf veya tekil)
+  attributes: "attributes"    # ürün nitelikleri (materyal, renk, stil...)
+  label: "label"              # hedef: 1=alakalı, 0=alakasız (yalnız train'de pozitif=1)
+
+# Kolon otomatik-tespiti için olası isim varyantları (küçük harfe indirgenir).
+column_aliases:
+  id:            ["id", "row_id", "pair_id", "index"]
+  term:          ["search_term", "term", "query", "arama_terimi", "search_term_normalized", "keyword"]
+  product_title: ["product_title", "product_name", "title", "urun_adi", "urun_basligi", "content_title", "name"]
+  category:      ["category", "category_name", "leaf_category_name", "kategori", "cat", "category_hierarchy"]
+  attributes:    ["attributes", "product_attributes", "attrs", "nitelikler", "ozellikler", "attribute_values"]
+  label:         ["label", "target", "relevance", "alaka", "is_related", "y"]
+  # İlişkisel şema anahtarları (çift dosyası yalnız ID taşıyorsa loader join yapar)
+  term_id:       ["term_id", "query_id", "search_term_id"]
+  item_id:       ["item_id", "product_id", "content_id"]
+
+# --- Çıkarım -----------------------------------------------------------------
+inference:
+  chunk_size: 250000   # 3.36M test çifti bellek dostu parçalar halinde puanlanır
+
+submission:
+  id_column: "id"
+  prediction_column: "prediction"   # gerçek sample_submission'a göre otomatik güncellenir
+
+# --- Negatif örnekleme ----------------------------------------------------
+negative_sampling:
+  # Her pozitif başına üretilecek negatif sayısı (test dengesine göre ayarlanır).
+  ratio: 1.0
+  random_frac: 0.5      # farklı kategoriden rastgele negatifler (kolay)
+  hard_frac: 0.5        # aynı kategoriden negatifler (zor — modeli keskinleştirir)
+  seed: 42
+
+# --- Öznitelik mühendisliği ----------------------------------------------
+features:
+  tfidf_word:
+    max_features: 50000
+    ngram_range: [1, 2]
+    min_df: 2
+  tfidf_char:              # Türkçe morfoloji için karakter n-gram çok etkili
+    max_features: 50000
+    ngram_range: [2, 5]
+    min_df: 2
+    analyzer: "char_wb"
+  use_embeddings: false    # true yaparsan sentence-transformers gerekir
+  embedding_model: "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
+
+# --- Model ----------------------------------------------------------------
+model:
+  type: "lightgbm"
+  cv_folds: 5
+  group_column: "term"     # sızıntıyı önlemek için terim bazlı GroupKFold
+  seed: 42
+  lgbm_params:
+    objective: "binary"
+    metric: "binary_logloss"
+    boosting_type: "gbdt"
+    n_estimators: 2000
+    learning_rate: 0.03
+    num_leaves: 63
+    max_depth: -1
+    min_child_samples: 40
+    subsample: 0.8
+    subsample_freq: 1
+    colsample_bytree: 0.8
+    reg_alpha: 0.1
+    reg_lambda: 0.1
+    n_jobs: -1
+    verbose: -1
+  early_stopping_rounds: 100
+
+# --- Değerlendirme / eşik -------------------------------------------------
+evaluation:
+  optimize_metric: "f1"    # eşik bu metriği maksimize edecek şekilde seçilir
+  default_threshold: 0.5

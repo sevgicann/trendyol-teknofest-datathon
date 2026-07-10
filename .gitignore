@@ -1,0 +1,37 @@
+# Data — never commit competition data
+data/raw/*
+data/interim/*
+data/processed/*
+!data/**/.gitkeep
+# Gerçek yarışma verisi (628MB — GitHub dosya limitini aşar)
+folder/
+
+# Run logs
+reports/*.txt
+
+# Models & outputs
+models/*
+!models/.gitkeep
+submissions/*
+!submissions/.gitkeep
+reports/figures/*
+!reports/figures/.gitkeep
+
+# Kaggle credentials
+kaggle.json
+.kaggle/
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.ipynb_checkpoints/
+.venv/
+venv/
+env/
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
