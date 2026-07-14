@@ -56,8 +56,10 @@ submission:
 negative_sampling:
   # Her pozitif başına üretilecek negatif sayısı (test dengesine göre ayarlanır).
   ratio: 1.0
-  random_frac: 0.5      # farklı kategoriden rastgele negatifler (kolay)
-  hard_frac: 0.5        # aynı kategoriden negatifler (zor — modeli keskinleştirir)
+  random_frac: 0.3      # farklı kategoriden rastgele negatifler (kolay)
+  hard_frac: 0.3        # kategori yolu benzer negatifler (kategori-zor)
+  term_hard_frac: 0.4   # başlığı TERİMLE sözcük paylaşan negatifler (terim-zor —
+                        # gerçek testin insan etiketli negatif profiline en yakın tür)
   seed: 42
 
 # --- Öznitelik mühendisliği ----------------------------------------------

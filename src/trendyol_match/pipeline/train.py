@@ -42,7 +42,9 @@ def run_train(cfg=None) -> dict:
     data = build_negatives(
         train_pos,
         ratio=ns["ratio"], random_frac=ns["random_frac"],
-        hard_frac=ns["hard_frac"], seed=ns["seed"],
+        hard_frac=ns["hard_frac"],
+        term_hard_frac=ns.get("term_hard_frac", 0.0),
+        seed=ns["seed"],
         catalog=catalog,
     )
     data.to_csv(interim_dir / "train_with_negatives.csv", index=False, encoding="utf-8")
