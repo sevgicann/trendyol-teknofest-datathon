@@ -14,8 +14,10 @@ import json
 from pathlib import Path
 
 import numpy as np
+import pandas as pd
 
 from ..config import load_config, resolve_path
+from ..data.candidate_mining import mine_retrieval_negatives
 from ..data.loader import load_items, load_train
 from ..data.negative_sampling import build_negatives
 from ..evaluation.metrics import evaluate, find_best_threshold, format_metrics
@@ -33,7 +35,7 @@ def run_train(cfg=None) -> dict:
     # 1) pozitif veri
     train_pos = load_train(cfg)
 
-    # 2) negatif örnekleme — negatif havuzu olarak tam ürün kataloğu (varsa)
+    # 2a) negatif örnekleme — sözlüksel (terim-zor) + rastgele karışım
     try:
         catalog = load_items(cfg)
     except FileNotFoundError:
@@ -47,6 +49,28 @@ def run_train(cfg=None) -> dict:
         seed=ns["seed"],
         catalog=catalog,
     )
+
+    # 2b) retrieval madenciliği — eğitim gruplarını test gibi kurar (ana negatif kaynağı)
+    rm = cfg.get("retrieval_mining", {})
+    if rm and catalog is not None and "term_id" in train_pos.columns:
+        emb_t = resolve_path(cfg, cfg.features["emb_terms_file"])
+        emb_i = resolve_path(cfg, cfg.features["emb_items_file"])
+        if emb_t.exists() and emb_i.exists():
+            print("\n[retrieval] embedding tabanlı aday madenciliği...")
+            ret_negs = mine_retrieval_negatives(
+                train_pos, catalog, emb_t, emb_i,
+                top_k=int(rm.get("top_k", 120)),
+                neg_per_pos=float(rm.get("neg_per_pos", 2.0)),
+                skip_top=int(rm.get("skip_top", 3)),
+                term_chunk=int(rm.get("term_chunk", 400)),
+                seed=ns["seed"],
+            )
+            data = (pd.concat([data, ret_negs[data.columns]], ignore_index=True)
+                    .sample(frac=1.0, random_state=ns["seed"]).reset_index(drop=True))
+            print(f"[veri] toplam eğitim seti: {len(data)} satır "
+                  f"(pozitif oranı={data['label'].mean():.3f})")
+        else:
+            print("[retrieval] embedding dosyaları yok — önce: python scripts/06_embed.py")
     data.to_csv(interim_dir / "train_with_negatives.csv", index=False, encoding="utf-8")
 
     # 3) öznitelikler (taban + terim-içi grup öznitelikleri)

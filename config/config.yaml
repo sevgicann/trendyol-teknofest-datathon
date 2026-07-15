@@ -53,16 +53,26 @@ submission:
   prediction_column: "prediction"   # gerçek sample_submission'a göre otomatik güncellenir
 
 # --- Negatif örnekleme ----------------------------------------------------
+# Ana negatif kaynağı RETRIEVAL MADENCİLİĞİ'dir (aşağıda); buradaki örnekleyici
+# karışıma sözlüksel (terim-zor) ve kolay (rastgele) negatif ekler.
+# Toplam ≈ 2.0 (retrieval) + 1.0 (örnekleyici) = pozitif başına 3 negatif →
+# train %25 pozitif ≈ testin LB-probe'lardan çıkarılan ~%25-28 gerçek oranı.
 negative_sampling:
-  # Her pozitif başına üretilecek negatif sayısı. 3.0 → train %25 pozitif olur;
-  # LB probe'ları testin gerçek pozitif oranının ~%25-28 olduğunu gösterdi —
-  # eğitim dengesini teste yaklaştırmak eşik transferini ve precision'ı düzeltir.
-  ratio: 3.0
-  random_frac: 0.3      # farklı kategoriden rastgele negatifler (kolay)
-  hard_frac: 0.3        # kategori yolu benzer negatifler (kategori-zor)
-  term_hard_frac: 0.4   # başlığı TERİMLE sözcük paylaşan negatifler (terim-zor —
-                        # gerçek testin insan etiketli negatif profiline en yakın tür)
+  ratio: 1.0
+  random_frac: 0.4      # farklı kategoriden rastgele negatifler (kolay)
+  hard_frac: 0.0        # kategori-zor: retrieval adayları bu rolü devraldı
+  term_hard_frac: 0.6   # başlığı TERİMLE sözcük paylaşan negatifler (sözlüksel-zor)
   seed: 42
+
+# --- Retrieval tabanlı negatif madenciliği ---------------------------------
+# Eğitim setini testin kurulduğu gibi kurar: her train terimi için katalogdan
+# embedding-benzerliğiyle top-K aday çekilir; pozitif olmayanlar negatif olur.
+# skip_top: tepe adaylar çoğu kez etiketlenmemiş GERÇEK pozitiftir — atlanır.
+retrieval_mining:
+  top_k: 120
+  neg_per_pos: 2.0
+  skip_top: 3
+  term_chunk: 400
 
 # --- Öznitelik mühendisliği ----------------------------------------------
 features:
@@ -90,7 +100,7 @@ model:
     objective: "binary"
     metric: "binary_logloss"
     boosting_type: "gbdt"
-    n_estimators: 2000
+    n_estimators: 3000   # v3'te fold'lar 2000 tavanına dayandı — tavan yükseltildi
     learning_rate: 0.03
     num_leaves: 63
     max_depth: -1
