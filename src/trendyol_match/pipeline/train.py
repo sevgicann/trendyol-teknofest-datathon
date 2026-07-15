@@ -49,10 +49,11 @@ def run_train(cfg=None) -> dict:
     )
     data.to_csv(interim_dir / "train_with_negatives.csv", index=False, encoding="utf-8")
 
-    # 3) öznitelikler
+    # 3) öznitelikler (taban + terim-içi grup öznitelikleri)
     print("\n[öznitelik] TF-IDF fit + transform...")
     fb = FeatureBuilder(cfg)
     X = fb.fit_transform(data)
+    X = FeatureBuilder.add_group_features(X, data["term"])
     y = data["label"].values
     groups = data["term"].values
     print(f"[öznitelik] {X.shape[1]} öznitelik: {list(X.columns)}")

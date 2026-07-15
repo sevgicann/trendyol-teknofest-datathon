@@ -124,7 +124,11 @@ _ATTR_EXTRA = [("brand", "marka"), ("gender", "cinsiyet"), ("age_group", "yaş g
 
 
 def _enrich_attributes(items: pd.DataFrame) -> pd.DataFrame:
-    """brand/gender/age_group alanlarını attributes metninin başına ekler."""
+    """brand/gender/age_group alanlarını attributes metninin başına ekler.
+
+    Kolonların kendileri de korunur: yapılandırılmış eşleşme öznitelikleri
+    (brand_in_term, gender_conflict...) bunları ayrıca kullanır.
+    """
     extras = [c for c, _ in _ATTR_EXTRA if c in items.columns]
     if not extras:
         return items
@@ -138,7 +142,6 @@ def _enrich_attributes(items: pd.DataFrame) -> pd.DataFrame:
         if base:
             bits.append(base)
         parts.append(", ".join(bits))
-    items = items.drop(columns=extras)
     items["attributes"] = parts
     return items
 
@@ -201,7 +204,8 @@ def load_test_labels(cfg: Config | None = None) -> Optional[pd.DataFrame]:
     return None
 
 
-TEXT_COLS = ["term", "product_title", "category", "attributes"]
+TEXT_COLS = ["term", "product_title", "category", "attributes",
+             "brand", "gender", "age_group"]
 
 
 def _fill_text_columns(df: pd.DataFrame) -> None:

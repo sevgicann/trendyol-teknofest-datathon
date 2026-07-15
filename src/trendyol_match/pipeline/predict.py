@@ -32,19 +32,28 @@ def run_predict(cfg=None) -> Path:
         meta = json.load(f)
     threshold = float(meta["threshold"])
 
-    # test — büyük test setleri (milyonlarca çift) bellek dostu parçalar halinde puanlanır
+    # test — büyük test setleri (milyonlarca çift) bellek dostu parçalar halinde işlenir.
+    # İki geçiş: (1) taban öznitelikler parça parça, (2) grup öznitelikleri TÜM test
+    # üzerinde (terim grupları parça sınırlarına bölünmemeli), (3) parça parça tahmin.
     test = load_test(cfg)
     chunk_size = int(cfg.get("inference", {}).get("chunk_size", 250_000))
     n = len(test)
-    proba = np.empty(n, dtype=np.float64)
     n_chunks = (n + chunk_size - 1) // chunk_size
+
+    feat_parts = []
     for ci, start in enumerate(range(0, n, chunk_size), 1):
         stop = min(start + chunk_size, n)
-        part = test.iloc[start:stop]
-        X_part = fb.transform(part)
-        proba[start:stop] = model.predict_proba(X_part)
+        feat_parts.append(fb.transform(test.iloc[start:stop]))
         if n_chunks > 1:
-            print(f"  [çıkarım] parça {ci}/{n_chunks}  ({stop}/{n} satır)")
+            print(f"  [öznitelik] parça {ci}/{n_chunks}  ({stop}/{n} satır)")
+    X_test = pd.concat(feat_parts, ignore_index=True)
+    del feat_parts
+    X_test = FeatureBuilder.add_group_features(X_test, test["term"].values)
+
+    proba = np.empty(n, dtype=np.float64)
+    for start in range(0, n, chunk_size):
+        stop = min(start + chunk_size, n)
+        proba[start:stop] = model.predict_proba(X_test.iloc[start:stop])
     pred = (proba >= threshold).astype(int)
 
     # submission formatını sample_submission'a uydur

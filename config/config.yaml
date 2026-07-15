@@ -54,8 +54,10 @@ submission:
 
 # --- Negatif örnekleme ----------------------------------------------------
 negative_sampling:
-  # Her pozitif başına üretilecek negatif sayısı (test dengesine göre ayarlanır).
-  ratio: 1.0
+  # Her pozitif başına üretilecek negatif sayısı. 3.0 → train %25 pozitif olur;
+  # LB probe'ları testin gerçek pozitif oranının ~%25-28 olduğunu gösterdi —
+  # eğitim dengesini teste yaklaştırmak eşik transferini ve precision'ı düzeltir.
+  ratio: 3.0
   random_frac: 0.3      # farklı kategoriden rastgele negatifler (kolay)
   hard_frac: 0.3        # kategori yolu benzer negatifler (kategori-zor)
   term_hard_frac: 0.4   # başlığı TERİMLE sözcük paylaşan negatifler (terim-zor —
@@ -73,8 +75,10 @@ features:
     ngram_range: [2, 5]
     min_df: 2
     analyzer: "char_wb"
-  use_embeddings: false    # true yaparsan sentence-transformers gerekir
   embedding_model: "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
+  # 06_embed.py'nin ürettiği önceden hesaplanmış vektörler (yoksa öznitelik atlanır)
+  emb_terms_file: "models/emb_terms.npz"
+  emb_items_file: "models/emb_items.npz"
 
 # --- Model ----------------------------------------------------------------
 model:

@@ -64,10 +64,23 @@ def build_negatives(
 
     # Negatif ürün havuzu: tam katalog (varsa) ya da pozitif satırlar
     pool = catalog if catalog is not None else pos
-    pool_titles = pool["product_title"].fillna("").astype(str).tolist()
-    pool_cats = pool["category"].fillna("").astype(str).tolist()
-    pool_attrs = (pool["attributes"].fillna("").astype(str).tolist()
-                  if "attributes" in pool.columns else [""] * len(pool))
+
+    def _col(name: str) -> list[str]:
+        return (pool[name].fillna("").astype(str).tolist()
+                if name in pool.columns else [""] * len(pool))
+
+    pool_titles = _col("product_title")
+    pool_cats = _col("category")
+    pool_attrs = _col("attributes")
+    pool_brands = _col("brand")
+    pool_genders = _col("gender")
+    pool_ages = _col("age_group")
+    pool_item_ids = _col("item_id")
+
+    # Embedding lookup için: terim metni -> term_id (pozitiflerden)
+    term_to_id: dict[str, str] = {}
+    if "term_id" in pos.columns:
+        term_to_id = dict(zip(pos["term"], pos["term_id"]))
 
     # Kategori -> havuzdaki satır indeksleri (ürün örnekleme için)
     cat_to_idx: dict[str, list[int]] = defaultdict(list)
@@ -174,14 +187,23 @@ def build_negatives(
         counts[kind] += 1
         neg_rows.append({
             "term": term,
+            "term_id": term_to_id.get(term, ""),
+            "item_id": pool_item_ids[j],
             "product_title": pool_titles[j],
             "category": pool_cats[j],
             "attributes": pool_attrs[j],
+            "brand": pool_brands[j],
+            "gender": pool_genders[j],
+            "age_group": pool_ages[j],
             "label": 0,
         })
 
     neg = pd.DataFrame(neg_rows)
-    keep = ["term", "product_title", "category", "attributes", "label"]
+    keep = ["term", "term_id", "item_id", "product_title", "category",
+            "attributes", "brand", "gender", "age_group", "label"]
+    for c in keep:
+        if c not in pos.columns:
+            pos[c] = ""
     combined = pd.concat([pos[keep], neg[keep]], ignore_index=True)
     combined = combined.sample(frac=1.0, random_state=seed).reset_index(drop=True)
 
