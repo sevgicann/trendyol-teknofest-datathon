@@ -48,7 +48,8 @@ def run_predict(cfg=None) -> Path:
             print(f"  [öznitelik] parça {ci}/{n_chunks}  ({stop}/{n} satır)")
     X_test = pd.concat(feat_parts, ignore_index=True)
     del feat_parts
-    X_test = FeatureBuilder.add_group_features(X_test, test["term"].values)
+    if cfg.features.get("use_group_features", False):
+        X_test = FeatureBuilder.add_group_features(X_test, test["term"].values)
 
     proba = np.empty(n, dtype=np.float64)
     for start in range(0, n, chunk_size):

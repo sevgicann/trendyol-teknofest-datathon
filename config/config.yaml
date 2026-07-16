@@ -57,18 +57,22 @@ submission:
 # karışıma sözlüksel (terim-zor) ve kolay (rastgele) negatif ekler.
 # Toplam ≈ 2.0 (retrieval) + 1.0 (örnekleyici) = pozitif başına 3 negatif →
 # train %25 pozitif ≈ testin LB-probe'lardan çıkarılan ~%25-28 gerçek oranı.
+# v2 tarifi — 4 sürümlük LB kanıtına göre en iyi kurulum (LB 0.745):
+# negatifler terimin pozitif kategorilerinden ASLA gelmez → etiket gürültüsü ~0.
+# Ders: pozitif-only veride temiz etiket > "gerçekçi" dağılım.
 negative_sampling:
   ratio: 1.0
-  random_frac: 0.4      # farklı kategoriden rastgele negatifler (kolay)
-  hard_frac: 0.0        # kategori-zor: retrieval adayları bu rolü devraldı
-  term_hard_frac: 0.6   # başlığı TERİMLE sözcük paylaşan negatifler (sözlüksel-zor)
+  random_frac: 0.3      # farklı kategoriden rastgele negatifler (kolay)
+  hard_frac: 0.3        # kategori yolu benzer negatifler (kategori-zor)
+  term_hard_frac: 0.4   # başlığı TERİMLE sözcük paylaşan negatifler (sözlüksel-zor)
   seed: 42
 
 # --- Retrieval tabanlı negatif madenciliği ---------------------------------
-# Eğitim setini testin kurulduğu gibi kurar: her train terimi için katalogdan
-# embedding-benzerliğiyle top-K aday çekilir; pozitif olmayanlar negatif olur.
-# skip_top: tepe adaylar çoğu kez etiketlenmemiş GERÇEK pozitiftir — atlanır.
+# v4 deneyi: LB 0.65'e düşürdü — embedding-yakın adayların önemli kısmı
+# etiketlenmemiş GERÇEK pozitif çıktı (train pozitifleri eksiksiz değil).
+# Kod duruyor; enabled=true ile tekrar denenebilir (daha agresif skip_top ile).
 retrieval_mining:
+  enabled: false
   top_k: 120
   neg_per_pos: 2.0
   skip_top: 3
@@ -89,6 +93,9 @@ features:
   # 06_embed.py'nin ürettiği önceden hesaplanmış vektörler (yoksa öznitelik atlanır)
   emb_terms_file: "models/emb_terms.npz"
   emb_items_file: "models/emb_items.npz"
+  # Terim-içi grup öznitelikleri: v3 deneyinde train/test grup yapısı uyuşmadığı
+  # için LB'yi düşürdü — varsayılan kapalı.
+  use_group_features: false
 
 # --- Model ----------------------------------------------------------------
 model:

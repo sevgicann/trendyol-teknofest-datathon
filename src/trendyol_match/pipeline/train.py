@@ -50,9 +50,9 @@ def run_train(cfg=None) -> dict:
         catalog=catalog,
     )
 
-    # 2b) retrieval madenciliği — eğitim gruplarını test gibi kurar (ana negatif kaynağı)
+    # 2b) retrieval madenciliği (varsayılan kapalı — bkz. config notu)
     rm = cfg.get("retrieval_mining", {})
-    if rm and catalog is not None and "term_id" in train_pos.columns:
+    if rm.get("enabled", False) and catalog is not None and "term_id" in train_pos.columns:
         emb_t = resolve_path(cfg, cfg.features["emb_terms_file"])
         emb_i = resolve_path(cfg, cfg.features["emb_items_file"])
         if emb_t.exists() and emb_i.exists():
@@ -73,11 +73,12 @@ def run_train(cfg=None) -> dict:
             print("[retrieval] embedding dosyaları yok — önce: python scripts/06_embed.py")
     data.to_csv(interim_dir / "train_with_negatives.csv", index=False, encoding="utf-8")
 
-    # 3) öznitelikler (taban + terim-içi grup öznitelikleri)
+    # 3) öznitelikler (taban; grup öznitelikleri config bayrağıyla)
     print("\n[öznitelik] TF-IDF fit + transform...")
     fb = FeatureBuilder(cfg)
     X = fb.fit_transform(data)
-    X = FeatureBuilder.add_group_features(X, data["term"])
+    if cfg.features.get("use_group_features", False):
+        X = FeatureBuilder.add_group_features(X, data["term"])
     y = data["label"].values
     groups = data["term"].values
     print(f"[öznitelik] {X.shape[1]} öznitelik: {list(X.columns)}")
