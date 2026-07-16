@@ -208,6 +208,33 @@ class FeatureBuilder:
         feats["coverage_term_in_attrs"] = cover_tattr
         feats["term_substring_of_title"] = term_in_title_substr
 
+        # --- IDF-ağırlıklı kapsama: nadir kelime eşleşmesi ("nike") yaygın
+        # kelime eşleşmesinden ("siyah") çok daha güçlü alaka kanıtıdır ---
+        vocab = self.word_vec.vocabulary_
+        idf = self.word_vec.idf_
+        max_idf = float(idf.max()) if len(idf) else 1.0
+
+        def _idf(tok: str) -> float:
+            j = vocab.get(tok)
+            return float(idf[j]) if j is not None else max_idf  # OOV = nadir
+
+        idf_cover_title = np.zeros(n)
+        idf_cover_doc = np.zeros(n)
+        for i in range(n):
+            tt = term_tok[i]
+            if not tt:
+                continue
+            total = sum(_idf(t) for t in tt)
+            if total <= 0:
+                continue
+            in_title = sum(_idf(t) for t in tt if t in title_tok[i])
+            doc_set = title_tok[i] | cat_tok[i] | attr_tok[i]
+            in_doc = sum(_idf(t) for t in tt if t in doc_set)
+            idf_cover_title[i] = in_title / total
+            idf_cover_doc[i] = in_doc / total
+        feats["idf_coverage_term_in_title"] = idf_cover_title
+        feats["idf_coverage_term_in_doc"] = idf_cover_doc
+
         # --- Yapılandırılmış eşleşme: marka / cinsiyet / yaş ---
         brands = [normalize(b, deaccent=True) for b in _col_or_empty(df, "brand")]
         genders = [normalize(g, deaccent=True) for g in _col_or_empty(df, "gender")]

@@ -78,6 +78,21 @@ retrieval_mining:
   skip_top: 3
   term_chunk: 400
 
+# --- Pseudo-labeling --------------------------------------------------------
+# Birden fazla modelin MUTABIK ve EMİN olduğu test çiftleri, o etiketle eğitime
+# katılır — model ilk kez gerçek test dağılımından (özellikle gerçek
+# negatiflerden) öğrenir. v4'ün aksine etiket uydurulmaz; modelin kendi
+# yüksek-güvenli tahmini kullanılır (muhafazakâr eşikler + mutabakat filtresi).
+pseudo_labeling:
+  enabled: true
+  proba_files:
+    - "submissions/test_probabilities_v2.csv"
+    - "submissions/test_probabilities_v5.csv"
+  pos_thr: 0.90
+  neg_thr: 0.03
+  max_pos: 100000
+  max_neg: 300000
+
 # --- Öznitelik mühendisliği ----------------------------------------------
 features:
   tfidf_word:

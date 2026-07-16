@@ -18,8 +18,9 @@ import pandas as pd
 
 from ..config import load_config, resolve_path
 from ..data.candidate_mining import mine_retrieval_negatives
-from ..data.loader import load_items, load_train
+from ..data.loader import load_items, load_test, load_train
 from ..data.negative_sampling import build_negatives
+from ..data.pseudo_labeling import build_pseudo_labels
 from ..evaluation.metrics import evaluate, find_best_threshold, format_metrics
 from ..features.build_features import FeatureBuilder
 from ..models.lgbm_model import LgbmMatcher
@@ -71,6 +72,29 @@ def run_train(cfg=None) -> dict:
                   f"(pozitif oranı={data['label'].mean():.3f})")
         else:
             print("[retrieval] embedding dosyaları yok — önce: python scripts/06_embed.py")
+
+    # 2c) pseudo-labeling — mutabık + emin test çiftleri gerçek etiket dağılımını getirir
+    pl = cfg.get("pseudo_labeling", {})
+    if pl.get("enabled", False):
+        paths = [resolve_path(cfg, p) for p in pl.get("proba_files", [])]
+        if paths and all(p.exists() for p in paths):
+            print("\n[pseudo] test yükleniyor ve yüksek-güvenli çiftler seçiliyor...")
+            test = load_test(cfg, verbose=False)
+            pseudo = build_pseudo_labels(
+                test, paths,
+                pos_thr=float(pl.get("pos_thr", 0.90)),
+                neg_thr=float(pl.get("neg_thr", 0.03)),
+                max_pos=int(pl.get("max_pos", 100_000)),
+                max_neg=int(pl.get("max_neg", 300_000)),
+                seed=ns["seed"],
+            )
+            del test
+            data = (pd.concat([data, pseudo[data.columns]], ignore_index=True)
+                    .sample(frac=1.0, random_state=ns["seed"]).reset_index(drop=True))
+            print(f"[veri] pseudo dahil eğitim seti: {len(data)} satır "
+                  f"(pozitif oranı={data['label'].mean():.3f})")
+        else:
+            print("[pseudo] olasılık dosyaları eksik — pseudo-labeling atlandı")
     data.to_csv(interim_dir / "train_with_negatives.csv", index=False, encoding="utf-8")
 
     # 3) öznitelikler (taban; grup öznitelikleri config bayrağıyla)
