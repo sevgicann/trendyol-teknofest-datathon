@@ -14,6 +14,8 @@ models/*
 !models/.gitkeep
 submissions/*
 !submissions/.gitkeep
+!submissions/README_MODEL.md
+*.zip
 reports/figures/*
 !reports/figures/.gitkeep
 

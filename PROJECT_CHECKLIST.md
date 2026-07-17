@@ -51,9 +51,16 @@ Durum: `[x]` tamam · `[~]` devam ediyor · `[ ]` bekliyor
       → OOF F1=0.9808 (eşik 0.4967, ROC-AUC 0.9969), 5 fold tutarlı
       → negatif örnekleme tam katalogdan (962K ürün), 250K pozitif için ~3 sn
       → submission üretildi ve formatı doğrulandı (3.359.679 satır, id sırası birebir)
-- [ ] Hiperparametre ayarı (Optuna) — gerçek veride
-- [ ] (İkinci aşama) Çok sınıflı sürüm: alakalı / az alakalı / alakasız
-- [ ] Cross-encoder / transformer ile ansambl (doğruluk artışı için)
+- [x] Leaderboard iterasyonları (LB günlüğü):
+      · v1 rastgele+kategori negatifleri → 0.671
+      · v2 + terim-zor negatifler → 0.732; eşik taraması @%33-31 → 0.750
+      · v3 grup öznitelikleri + ratio 3 → 0.714 (ders: sentetik grup yapısı testle uyuşmuyor)
+      · v4 retrieval-madenli negatifler → 0.650 (ders: etiketlenmemiş-pozitif gürültüsü)
+      · v5 = v2 tarifi + embedding + marka/cinsiyet → harman v2×v5 @%33 → 0.758
+      · v6 + pseudo-labeling + IDF kapsama → üçlü harman @%31 → **0.767 (final)**
+- [x] En iyi model paketi: `best_model_blend3_lb0767.zip` + `submissions/README_MODEL.md`
+- [ ] (İkinci aşama — finale kalınırsa) Çok sınıflı sürüm: alakalı / az alakalı / alakasız
+- [ ] (İkinci aşama) Cross-encoder / GPU ile embedding fine-tune
 
 ## Notlar
 - Değerlendirme **Başarı + Hız + Açıklanabilirlik** — mimari üçünü de gözetir.
